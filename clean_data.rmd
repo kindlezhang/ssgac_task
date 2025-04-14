@@ -16,8 +16,7 @@ library(tidyverse)
 ```{r}
 # Load the data
 data_A <- read_table("Data_Task/Data/sumstats_trait_A.txt")
-data_A |>
-    filter(SNP == "rs1110052")
+data_B <- read_table("Data_Task/Data/sumstats_trait_B.txt")
 ```
 
 # check the data and clean or fix 
@@ -90,10 +89,10 @@ and the z value should be out of -1.96 and 1.96.
 
 ```{r}
 data_filtered <- data_filtered |>
-    filter((z < -1.96 | z > 1.96)     
-           & info > 0.90
-           & NCHROBS > 800000
-           & N > 70000)
+    filter((z < -1.96 | z > 1.96) &
+        info > 0.90 &
+        NCHROBS > 800000 &
+        N > 70000)
 ```
 
 Since GWAS is essentially similar to simple linear regression (SLR), the beta and z values should have the same sign.
@@ -106,13 +105,34 @@ data_filtered <- data_filtered |>
 ### position information: SNP, CHR, BPOS
 
 ```{r}
+# check the CHR
+any(!(data_A$CHR == 22))
+
 # snp duplicate？
 
 any(duplicated(data_filtered$SNP))
-duplicated_values <- data_filtered $SNP[duplicated(data_filtered $SNP)]
-data_filtered  |>
-    filter(SNP == duplicated_values[1])
+duplicated_values <- data_filtered$SNP[duplicated(data_filtered$SNP)]
 
+data_filtered = 
+    data_filtered |>
+        group_by(SNP)  |> 
+        arrange(desc(info))  |> 
+        slice(1)
 
-any(!(data_A$CHR == 22))
+# data_B_new = data_filtered
+```
+
+# find common SNP in two traits
+
+```{r}
+data_A_new <- data_filtered
+intersect_snp = intersect(data_A_new$SNP, data_B_new$SNP)
+
+combine_df = 
+    rbind(data_A_new[data_A_new$SNP %in% intersect_snp, ],
+        data_B_new[data_B_new$SNP %in% intersect_snp, ]) |>
+        select(everything()) |>
+        arrange(SNP)
+
+combine_df
 ```
