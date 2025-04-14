@@ -7,4 +7,65 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
+```{r}
+library(tidyverse)
+```
 
+# Load the data
+
+```{r}
+# Load the data
+data_A <- read_table("Data_Task/Data/sumstats_trait_A.txt")
+data_A |>
+    filter(SNP == "rs1110052")
+```
+
+# check the data and clean or fix 
+
+## get a full data set
+
+### missing value in position
+
+```{r}
+rows_to_change <- which(data_A$BPOS %in% c("T", "C", "G", "A"))
+length(rows_to_change)
+
+data_A_new <-
+    data_A[rows_to_change, ] |>
+    mutate(
+        info = NCHROBS,
+        NCHROBS = z,
+        z = beta_hat,
+        beta_hat = N,
+        N = MAF,
+        MAF = A2,
+        A2 = A1,
+        A1 = BPOS,
+        BPOS = NA
+    )
+
+data_A <- rbind(data_A[-rows_to_change, ], data_A_new)
+```
+
+### missing value in NCHROBS
+
+
+We find that the individuals who lose its  NCHROBS also lose its z and info, so we find that we should replace NCHROBS with beta_hat.
+
+```{r}
+rows_to_change <- which(is.na(data_A$NCHROBS))
+length(rows_to_change)
+
+data_A_new <-
+    data_A[rows_to_change, ] |>
+    mutate(
+        NCHROBS = beta_hat,
+        beta_hat = NA
+    )
+
+data_A <- rbind(data_A[-rows_to_change, ], data_A_new)
+```
+
+Now we have the full data set and can have a further check on each variable.
+
+## check each variable
