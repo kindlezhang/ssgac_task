@@ -63,9 +63,56 @@ data_A_new <-
         beta_hat = NA
     )
 
-data_A <- rbind(data_A[-rows_to_change, ], data_A_new)
+data_A <- rbind(data_A[-rows_to_change, ], data_A_new) |>
+    mutate(MAF = as.numeric(MAF))
 ```
 
 Now we have the full data set and can have a further check on each variable.
 
 ## check each variable
+
+### check A1, A2 and MAF
+
+```{r}
+data_filtered <- data_A |>
+    filter(
+        A1 %in% c("A", "C", "G", "T") &
+            A2 %in% c("A", "C", "G", "T") &
+            MAF > 0 & MAF < 0.5 &
+            A1 != A2
+    )
+```
+
+### check the accuracy and significance of z
+
+Cause we use a two-sided test, so we assume a 95% significance level
+and the z value should be out of -1.96 and 1.96.
+
+```{r}
+data_filtered <- data_filtered |>
+    filter((z < -1.96 | z > 1.96)     
+           & info > 0.90
+           & NCHROBS > 800000
+           & N > 70000)
+```
+
+Since GWAS is essentially similar to simple linear regression (SLR), the beta and z values should have the same sign.
+
+```{r}
+data_filtered <- data_filtered |>
+    filter((beta_hat > 0 & z > 0) | (beta_hat < 0 & z < 0))
+```
+
+### position information: SNP, CHR, BPOS
+
+```{r}
+# snp duplicate？
+
+any(duplicated(data_filtered$SNP))
+duplicated_values <- data_filtered $SNP[duplicated(data_filtered $SNP)]
+data_filtered  |>
+    filter(SNP == duplicated_values[1])
+
+
+any(!(data_A$CHR == 22))
+```
