@@ -19,51 +19,76 @@ data_A <- read_table("Data_Task/Data/sumstats_trait_A.txt")
 data_B <- read_table("Data_Task/Data/sumstats_trait_B.txt")
 ```
 
+# Question1:
+
 # check the data and clean or fix 
 
 ## get a full data set
 
 ### missing value in position
 
+We can find there are many missing values in the position information, so we need to modify the data.
+
 ```{r}
-rows_to_change <- which(data_A$BPOS %in% c("T", "C", "G", "A"))
-length(rows_to_change)
+reorder_columns_if_pos <- function(data_frame) {
+    data_name <- deparse(substitute(data_frame))
+    rows_to_change <- which(data_frame$BPOS %in% c("T", "C", "G", "A"))
+    cat("There are", length(rows_to_change), "rows to change in", data_name, "\n")
 
-data_A_new <-
-    data_A[rows_to_change, ] |>
-    mutate(
-        info = NCHROBS,
-        NCHROBS = z,
-        z = beta_hat,
-        beta_hat = N,
-        N = MAF,
-        MAF = A2,
-        A2 = A1,
-        A1 = BPOS,
-        BPOS = NA
-    )
+    data_frame_new <- data_frame[rows_to_change, ] |>
+        dplyr::mutate(
+            info = NCHROBS,
+            NCHROBS = z,
+            z = beta_hat,
+            beta_hat = N,
+            N = MAF,
+            MAF = A2,
+            A2 = A1,
+            A1 = BPOS,
+            BPOS = NA
+        )
 
-data_A <- rbind(data_A[-rows_to_change, ], data_A_new)
+    # combine the new data with the original data
+    data_frame_final <- rbind(data_frame[-rows_to_change, ], data_frame_new)
+
+    # return the final data frame
+    return(data_frame_final)
+}
+```
+```{r}
+data_A <- reorder_columns_if_pos(data_A)
+data_B <- reorder_columns_if_pos(data_B)
 ```
 
 ### missing value in NCHROBS
 
-
 We find that the individuals who lose its  NCHROBS also lose its z and info, so we find that we should replace NCHROBS with beta_hat.
 
 ```{r}
-rows_to_change <- which(is.na(data_A$NCHROBS))
-length(rows_to_change)
+fix_nchrobs_missing <- function(data_frame) {
+    data_name <- deparse(substitute(data_frame))
+    # find the rows with missing NCHROBS
+    rows_to_change <- which(is.na(data_frame$NCHROBS))
+    cat("There are", length(rows_to_change), "rows with missing NCHROBS in", data_name, "\n")
 
-data_A_new <-
-    data_A[rows_to_change, ] |>
-    mutate(
-        NCHROBS = beta_hat,
-        beta_hat = NA
-    )
+    # replace NCHROBS with beta_hat
+    data_frame_new <- data_frame[rows_to_change, ] |>
+        dplyr::mutate(
+            NCHROBS = beta_hat,
+            beta_hat = NA
+        )
 
-data_A <- rbind(data_A[-rows_to_change, ], data_A_new) |>
-    mutate(MAF = as.numeric(MAF))
+    # combine the new data with the original data
+    data_frame_final <- rbind(data_frame[-rows_to_change, ], data_frame_new) |>
+        dplyr::mutate(MAF = as.numeric(MAF))
+
+    return(data_frame_final)
+}
+```
+
+```{r}
+data_A <- fix_nchrobs_missing(data_A)
+data_B <- fix_nchrobs_missing(data_B)
 ```
 
 Now we have the full data set and can have a further check on each variable.
@@ -72,14 +97,27 @@ Now we have the full data set and can have a further check on each variable.
 
 ### check A1, A2 and MAF
 
+......
+
 ```{r}
-data_filtered <- data_A |>
-    filter(
-        A1 %in% c("A", "C", "G", "T") &
-            A2 %in% c("A", "C", "G", "T") &
-            MAF > 0 & MAF < 0.5 &
-            A1 != A2
-    )
+filter_valid_snps <- function(data) {
+    data_name <- deparse(substitute(data))
+    # check the A1, A2 and MAF
+    data_filtered <- data |>
+        dplyr::filter(
+            A1 %in% c("A", "C", "G", "T") &
+                A2 %in% c("A", "C", "G", "T") &
+                MAF > 0 & MAF < 0.5 &
+                A1 != A2
+        )
+    cat(nrow(data) - nrow(data_filtered), "snps are filtered out due to A1, A2 and MAF in the", data_name, "\n")
+    return(data_filtered)
+}
+```
+
+```{r}
+data_A_filtered <- filter_valid_snps(data_A)
+data_B_filtered <- filter_valid_snps(data_B)
 ```
 
 ### check the accuracy and significance of z
@@ -88,51 +126,110 @@ Cause we use a two-sided test, so we assume a 95% significance level
 and the z value should be out of -1.96 and 1.96.
 
 ```{r}
-data_filtered <- data_filtered |>
-    filter((z < -1.96 | z > 1.96) &
-        info > 0.90 &
-        NCHROBS > 800000 &
-        N > 70000)
+filter_significant_snps <- function(data, info_threshold = 0.9, NCHROBS_threshold = 800000, N_threshold = 70000, alpha = 0.05) {
+    data_name <- deparse(substitute(data))
+    data_filtered <- data |>
+        dplyr::filter(
+            abs(z) > qnorm(1 - alpha / 2) &
+                info > info_threshold &
+                NCHROBS > NCHROBS_threshold &
+                N > N_threshold
+        )
+    cat(nrow(data) - nrow(data_filtered), "snps are filtered out due to small sample size or significance in", deparse(substitute(data)), "\n")
+    return(data_filtered)
+}
+```
+
+```{r}
+data_A_filtered <- filter_significant_snps(data_A_filtered)
+data_B_filtered <- filter_significant_snps(data_B_filtered)
 ```
 
 Since GWAS is essentially similar to simple linear regression (SLR), the beta and z values should have the same sign.
 
 ```{r}
-data_filtered <- data_filtered |>
+data_A_new <- data_A_filtered |>
     filter((beta_hat > 0 & z > 0) | (beta_hat < 0 & z < 0))
+cat(nrow(data_A_filtered) - nrow(data_A_new), "snps are filtered out due to different sign between beta and z in data A set. \n")
+
+data_B_new <- data_B_filtered |>
+    filter((beta_hat > 0 & z > 0) | (beta_hat < 0 & z < 0))
+cat(nrow(data_B_filtered) - nrow(data_B_new), "snps are filtered out due to different sign between beta and z in data B set. \n")
 ```
 
 ### position information: SNP, CHR, BPOS
 
+........
+
 ```{r}
 # check the CHR
-any(!(data_A$CHR == 22))
+any(!(data_A_new$CHR == 22))
+any(!(data_B_new$CHR == 22))
+cat("there is no snp from other chromosome in data A and B set.\n")
+```
 
-# snp duplicate？
+```{r}
+deduplicate_snps_by_info <- function(data) {
+    data_name <- deparse(substitute(data))
+    duplicated_count <- sum(duplicated(data$SNP))
+    cat("There are", duplicated_count, "duplicated SNPs in", data_name, "\n")
 
-any(duplicated(data_filtered$SNP))
-duplicated_values <- data_filtered$SNP[duplicated(data_filtered$SNP)]
+    data_dedup <- data |>
+        dplyr::group_by(SNP) |>
+        dplyr::arrange(dplyr::desc(info)) |>
+        dplyr::slice(1) |>
+        dplyr::ungroup()
 
-data_filtered = 
-    data_filtered |>
-        group_by(SNP)  |> 
-        arrange(desc(info))  |> 
-        slice(1)
+    return(data_dedup)
+}
+```
 
-# data_B_new = data_filtered
+```{r}
+data_A_new <- deduplicate_snps_by_info(data_A_new)
+data_B_new <- deduplicate_snps_by_info(data_B_new)
 ```
 
 # find common SNP in two traits
 
+..........
+
 ```{r}
-data_A_new <- data_filtered
-intersect_snp = intersect(data_A_new$SNP, data_B_new$SNP)
+intersect_snp <- intersect(data_A_new$SNP, data_B_new$SNP)
 
-combine_df = 
-    rbind(data_A_new[data_A_new$SNP %in% intersect_snp, ],
-        data_B_new[data_B_new$SNP %in% intersect_snp, ]) |>
-        select(everything()) |>
-        arrange(SNP)
+combine_df <-
+    rbind(
+        data_A_new[data_A_new$SNP %in% intersect_snp, ],
+        data_B_new[data_B_new$SNP %in% intersect_snp, ]
+    ) |>
+    select(-c(CHR, BPOS)) |>
+    arrange(SNP)
 
-combine_df
+combine_df_new <-
+    combine_df |>
+    group_by(SNP) |>
+    filter(
+        dplyr::n() == 2,
+        length(unique(A1)) == 1,
+        length(unique(A2)) == 1,
+        length(unique(MAF)) == 1
+    ) |>
+    dplyr::ungroup()
+
+snp_final = unique(combine_df_new$SNP)
+length(snp_final)
+setdiff(intersect_snp, snp_final)
 ```
+
+# find the snp in data set A with the biggest absolute z
+
+```{r}
+data_A_new |> 
+    filter(SNP %in% snp_final) |>
+    mutate(abs_z = abs(z)) |> 
+    arrange(desc(abs_z)) |> 
+    slice(1) |> 
+    select(SNP)
+```
+
+# Question 2:
+
