@@ -1,7 +1,7 @@
 ---
 title: "SSGAC Data Task"
 Author: "Kindle Zhang"
-output: github_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
