@@ -131,7 +131,7 @@ filter_significant_snps <- function(data, info_threshold = 0.9, NCHROBS_threshol
     data_filtered <- data |>
         dplyr::filter(
             abs(z) > qnorm(1 - alpha / 2) &
-                info > info_threshold &
+                info > info_threshold & info <= 1 &
                 NCHROBS > NCHROBS_threshold &
                 N > N_threshold
         )
@@ -215,7 +215,7 @@ combine_df_new <-
     ) |>
     dplyr::ungroup()
 
-snp_final = unique(combine_df_new$SNP)
+snp_final <- unique(combine_df_new$SNP)
 length(snp_final)
 setdiff(intersect_snp, snp_final)
 ```
@@ -223,13 +223,70 @@ setdiff(intersect_snp, snp_final)
 # find the snp in data set A with the biggest absolute z
 
 ```{r}
-data_A_new |> 
+data_A_new |>
     filter(SNP %in% snp_final) |>
-    mutate(abs_z = abs(z)) |> 
-    arrange(desc(abs_z)) |> 
-    slice(1) |> 
+    mutate(abs_z = abs(z)) |>
+    arrange(desc(abs_z)) |>
+    slice(1) |>
     select(SNP)
 ```
 
 # Question 2:
+
+
+## produce a Q-Q plot
+
+。。。。。。。
+
+```{r}
+# get the pvalue
+data_A_new$pval <- 2 * (1 - pnorm(abs(data_A_new$z)))
+data_B_new$pval <- 2 * (1 - pnorm(abs(data_B_new$z)))
+
+# sort the p-value
+p_A_clean <- sort(na.omit(data_A_new$pval))
+p_B_clean <- sort(na.omit(data_B_new$pval))
+
+# A df
+expected_A <- -log10(ppoints(length(p_A_clean)))
+observed_A <- -log10(p_A_clean)
+
+df_A <- data.frame(
+    Expected = expected_A,
+    Observed = observed_A,
+    Trait = "Trait A"
+)
+
+# B df
+observed_B <- -log10(p_B_clean)
+expected_B <- -log10(ppoints(length(p_B_clean)))
+
+df_B <- data.frame(
+    Expected = expected_B,
+    Observed = observed_B,
+    Trait = "Trait B"
+)
+
+# combine the data frame
+df <- rbind(df_A, df_B)
+
+ggplot(df, aes(x = Expected, y = Observed, color = Trait)) +
+    geom_point(size = 1, alpha = 0.6) +
+    geom_abline(slope = 1, intercept = 0, linetype = 1, color = "black") +
+    annotate("text", x = 1, y = 1.5, label = "45° line", angle = 11, hjust = 0, size = 10) +
+    labs(
+        title = "QQ Plot of Trait A and Trait B",
+        x = expression(Expected ~ ~ -log[10](italic(p))),
+        y = expression(Observed ~ ~ -log[10](italic(p))),
+        color = "Trait"
+    ) +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5))
+```
+
+## interpret the Q-Q plot
+
+The 45-degree line in the QQ plot represents the distribution of p-values we would expect under the global null hypothesis—i.e., if none of the SNPs are associated with the trait.
+
+In this analysis, deviations from the line suggest inflation or enrichment of small p-values. Specifically, the p-values for Trait B show a marked upward deviation from the 45-degree line, indicating strong evidence of association between SNPs and the trait. In contrast, Trait A follows the null line more closely, suggesting fewer or weaker signals of association.
 
