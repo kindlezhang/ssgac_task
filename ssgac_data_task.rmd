@@ -204,6 +204,8 @@ data_B_new <- deduplicate_snps_by_info(data_B_new)
 
 1 duplicated snp has been removed in data A and B set. (we retain the one with the highest info value)
 
+825 left in data A and 432 left in data B.
+
 # find common SNP in two traits
 
 Now we get two data_set cleaned, and we can find the common SNPs in two traits.
