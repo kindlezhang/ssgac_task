@@ -1,20 +1,13 @@
----
-title: "SSGAC Data Task"
-Author: "Kindle Zhang"
-output: github_document
----
+SSGAC Data Task
+================
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
-```
-
-```{r}
+``` r
 library(tidyverse)
 ```
 
 # Load the data
 
-```{r}
+``` r
 # Load the data
 data_A <- read_table("Data_Task/Data/sumstats_trait_A.txt")
 data_B <- read_table("Data_Task/Data/sumstats_trait_B.txt")
@@ -22,15 +15,16 @@ data_B <- read_table("Data_Task/Data/sumstats_trait_B.txt")
 
 # Question1:
 
-# check the data and clean or fix 
+# check the data and clean or fix
 
 ## get a full data set
 
 ### missing value in position
 
-We can find there are many missing values in the position information, so we need to modify the data.
+We can find there are many missing values in the position information,
+so we need to modify the data.
 
-```{r}
+``` r
 reorder_columns_if_pos <- function(data_frame) {
     data_name <- deparse(substitute(data_frame))
     rows_to_change <- which(data_frame$BPOS %in% c("T", "C", "G", "A"))
@@ -56,18 +50,27 @@ reorder_columns_if_pos <- function(data_frame) {
     return(data_frame_final)
 }
 ```
-```{r}
+
+``` r
 data_A <- reorder_columns_if_pos(data_A)
+```
+
+    ## There are 701 rows to change in data_A
+
+``` r
 data_B <- reorder_columns_if_pos(data_B)
 ```
+
+    ## There are 701 rows to change in data_B
 
 There are 701 rows to change in data_A and data_B.
 
 ### missing value in NCHROBS
 
-We find that the individuals who lose its  NCHROBS also lose its z and info, so we find that we should replace NCHROBS with beta_hat.
+We find that the individuals who lose its NCHROBS also lose its z and
+info, so we find that we should replace NCHROBS with beta_hat.
 
-```{r}
+``` r
 fix_nchrobs_missing <- function(data_frame) {
     data_name <- deparse(substitute(data_frame))
     # find the rows with missing NCHROBS
@@ -89,22 +92,32 @@ fix_nchrobs_missing <- function(data_frame) {
 }
 ```
 
-```{r}
+``` r
 data_A <- fix_nchrobs_missing(data_A)
+```
+
+    ## There are 345 rows with missing NCHROBS in data_A
+
+``` r
 data_B <- fix_nchrobs_missing(data_B)
 ```
 
+    ## There are 345 rows with missing NCHROBS in data_B
+
 There are 345 rows with missing NCHROBS in data_A and data_B.
 
-Now we have the full data set and can have a further check on each variable.
+Now we have the full data set and can have a further check on each
+variable.
 
 ## check each variable
 
 ### check A1, A2 and MAF
 
-We need to check the A1, A2 and MAF. The A1 and A2 should be one of "A", "C", "G" and "T". The MAF should be between 0 and 0.5. A1 should be differenct form A2.
+We need to check the A1, A2 and MAF. The A1 and A2 should be one of “A”,
+“C”, “G” and “T”. The MAF should be between 0 and 0.5. A1 should be
+differenct form A2.
 
-```{r}
+``` r
 filter_valid_snps <- function(data) {
     data_name <- deparse(substitute(data))
     # check the A1, A2 and MAF
@@ -120,20 +133,27 @@ filter_valid_snps <- function(data) {
 }
 ```
 
-```{r}
+``` r
 data_A_filtered <- filter_valid_snps(data_A)
+```
+
+    ## 2152 snps are filtered out due to A1, A2 and MAF in the data_A
+
+``` r
 data_B_filtered <- filter_valid_snps(data_B)
 ```
 
-2152 snps are filtered out due to A1, A2 and MAF in the data_A.
-2070 snps are filtered out due to A1, A2 and MAF in the data_B.
+    ## 2070 snps are filtered out due to A1, A2 and MAF in the data_B
+
+2152 snps are filtered out due to A1, A2 and MAF in the data_A. 2070
+snps are filtered out due to A1, A2 and MAF in the data_B.
 
 ### check the accuracy and significance of z
 
-Cause we use a two-sided test, so we assume a 95% significance level
-and the z value should be out of -1.96 and 1.96.
+Cause we use a two-sided test, so we assume a 95% significance level and
+the z value should be out of -1.96 and 1.96.
 
-```{r}
+``` r
 filter_significant_snps <- function(data, info_threshold = 0.9, NCHROBS_threshold = 800000, N_threshold = 70000, alpha = 0.05) {
     data_name <- deparse(substitute(data))
     data_filtered <- data |>
@@ -148,40 +168,69 @@ filter_significant_snps <- function(data, info_threshold = 0.9, NCHROBS_threshol
 }
 ```
 
-```{r}
+``` r
 data_A_filtered <- filter_significant_snps(data_A_filtered)
+```
+
+    ## 7023 snps are filtered out due to small sample size or significance in data_A_filtered
+
+``` r
 data_B_filtered <- filter_significant_snps(data_B_filtered)
 ```
 
-7023 snps are filtered out due to small sample size or significance in data_A_filtered.
-7498 snps are filtered out due to small sample size or significance in data_B_filtered.
+    ## 7498 snps are filtered out due to small sample size or significance in data_B_filtered
 
-Since GWAS is essentially similar to simple linear regression (SLR), the beta and z values should have the same sign. If they have the opposite sign,
-we should flip it.
+7023 snps are filtered out due to small sample size or significance in
+data_A_filtered. 7498 snps are filtered out due to small sample size or
+significance in data_B_filtered.
 
-```{r}
+Since GWAS is essentially similar to simple linear regression (SLR), the
+beta and z values should have the same sign. If they have the opposite
+sign, we should flip it.
+
+``` r
 data_A_new <- data_A_filtered |>
     filter((beta_hat > 0 & z > 0) | (beta_hat < 0 & z < 0))
 cat(nrow(data_A_filtered) - nrow(data_A_new), "snps are filtered out due to different sign between beta and z in data A set. \n")
+```
 
+    ## 0 snps are filtered out due to different sign between beta and z in data A set.
+
+``` r
 data_B_new <- data_B_filtered |>
     filter((beta_hat > 0 & z > 0) | (beta_hat < 0 & z < 0))
 cat(nrow(data_B_filtered) - nrow(data_B_new), "snps are filtered out due to different sign between beta and z in data B set. \n")
 ```
+
+    ## 0 snps are filtered out due to different sign between beta and z in data B set.
+
 no need to flip the sign.
 
 ### position information: SNP, CHR, BPOS
 
-We need to check the SNP, CHR and BPOS. The SNP should be unique and the CHR should be 22. The BPOS should be unique in each chromosome.
+We need to check the SNP, CHR and BPOS. The SNP should be unique and the
+CHR should be 22. The BPOS should be unique in each chromosome.
 
-```{r}
+``` r
 # check the CHR
 any(!(data_A_new$CHR == 22))
+```
+
+    ## [1] FALSE
+
+``` r
 any(!(data_B_new$CHR == 22))
+```
+
+    ## [1] FALSE
+
+``` r
 cat("there is no snp from other chromosome in data A and B set.\n")
 ```
 
-```{r}
+    ## there is no snp from other chromosome in data A and B set.
+
+``` r
 deduplicate_snps_by_info <- function(data) {
     data_name <- deparse(substitute(data))
     duplicated_count <- sum(duplicated(data$SNP))
@@ -197,18 +246,27 @@ deduplicate_snps_by_info <- function(data) {
 }
 ```
 
-```{r}
+``` r
 data_A_new <- deduplicate_snps_by_info(data_A_new)
+```
+
+    ## There are 1 duplicated SNPs in data_A_new
+
+``` r
 data_B_new <- deduplicate_snps_by_info(data_B_new)
 ```
 
-1 duplicated snp has been removed in data A and B set. (we retain the one with the highest info value)
+    ## There are 0 duplicated SNPs in data_B_new
+
+1 duplicated snp has been removed in data A and B set. (we retain the
+one with the highest info value)
 
 # find common SNP in two traits
 
-Now we get two data_set cleaned, and we can find the common SNPs in two traits.
+Now we get two data_set cleaned, and we can find the common SNPs in two
+traits.
 
-```{r}
+``` r
 intersect_snp <- intersect(data_A_new$SNP, data_B_new$SNP)
 
 combine_df <-
@@ -232,14 +290,29 @@ combine_df_new <-
 
 snp_final <- unique(combine_df_new$SNP)
 length(snp_final)
+```
+
+    ## [1] 46
+
+``` r
 setdiff(intersect_snp, snp_final)
 ```
 
-two snp has been removed in the final data set. we have left `r length(snp_final)` snps, namely `r snp_final`.
+    ## [1] "rs12072405" "rs4662139"
+
+two snp has been removed in the final data set. we have left 46 snps,
+namely rs1010069, rs10489156, rs10492970, rs10864499, rs10916668,
+rs10916878, rs11121356, rs11121608, rs11809957, rs12068489, rs12092513,
+rs12406819, rs1253885, rs1500968, rs16824697, rs17034563, rs1935229,
+rs2076608, rs2128699, rs214342, rs2213802, rs2355, rs2483266, rs2842258,
+rs3101219, rs3789498, rs3789559, rs3806308, rs3820034, rs4129341,
+rs4465231, rs4466678, rs4518869, rs4661529, rs4846064, rs4920478,
+rs590925, rs6669417, rs6670516, rs6692648, rs677214, rs735000, rs761087,
+rs879484, rs9430631, rs9439468.
 
 # find the snp in data set A with the biggest absolute z
 
-```{r}
+``` r
 snp_biggest_z <-
     data_A_new |>
     filter(SNP %in% snp_final) |>
@@ -249,13 +322,13 @@ snp_biggest_z <-
     select(SNP)
 ```
 
-the snp in data set A with the biggest absolute z is `r snp_biggest_z$SNP`.
+the snp in data set A with the biggest absolute z is rs214342.
 
 # Question 2:
 
 ## produce a Q-Q plot
 
-```{r}
+``` r
 # get the pvalue
 data_A_new$pval <- 2 * (1 - pnorm(abs(data_A_new$z)))
 data_B_new$pval <- 2 * (1 - pnorm(abs(data_B_new$z)))
@@ -301,35 +374,38 @@ ggplot(df, aes(x = Expected, y = Observed, color = Trait)) +
     theme(plot.title = element_text(hjust = 0.5))
 ```
 
+![](ssgac_data_task_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+
 ## interpret the Q-Q plot
 
-The 45-degree line in the QQ plot represents the distribution of 
-p-values we would expect under the global null hypothesis—i.e., 
-if none of the SNPs are associated with the trait.
+The 45-degree line in the QQ plot represents the distribution of
+p-values we would expect under the global null hypothesis—i.e., if none
+of the SNPs are associated with the trait.
 
-In this analysis, deviations from the line suggest inflation or 
-enrichment of small p-values. Specifically, the p-values for Trait 
-B show a marked upward deviation from the 45-degree line, indicating 
-strong evidence of association between SNPs and the trait. In contrast, 
-Trait A follows the null line more closely, suggesting fewer or weaker 
+In this analysis, deviations from the line suggest inflation or
+enrichment of small p-values. Specifically, the p-values for Trait B
+show a marked upward deviation from the 45-degree line, indicating
+strong evidence of association between SNPs and the trait. In contrast,
+Trait A follows the null line more closely, suggesting fewer or weaker
 signals of association.
 
 ## why it should be monotonic
 
-QQ plots are inherently monotonic because they plot quantiles of two 
-distributions, both of which are sorted in ascending order. As a 
-result, each successive point must have equal or higher x and y 
-values than the previous one, making the plot monotonically increasing 
-regardless of the specific data being compared.
+QQ plots are inherently monotonic because they plot quantiles of two
+distributions, both of which are sorted in ascending order. As a result,
+each successive point must have equal or higher x and y values than the
+previous one, making the plot monotonically increasing regardless of the
+specific data being compared.
 
 ## describe the trend of different traits
 
-In the QQ plot, the data for Trait A closely follows the 45-degree 
-line, indicating that most SNPs do not deviate from the null distribution. 
-This suggests few, if any, SNPs are significantly associated with Trait A.
+In the QQ plot, the data for Trait A closely follows the 45-degree line,
+indicating that most SNPs do not deviate from the null distribution.
+This suggests few, if any, SNPs are significantly associated with Trait
+A.
 
-In contrast, Trait B shows a substantial upward deviation from the 
-45-degree line, especially in the tail, which indicates strong 
-enrichment of small p-values. This suggests that many SNPs are 
-likely associated with Trait B, and the genetic signal is stronger 
-compared to Trait A.
+In contrast, Trait B shows a substantial upward deviation from the
+45-degree line, especially in the tail, which indicates strong
+enrichment of small p-values. This suggests that many SNPs are likely
+associated with Trait B, and the genetic signal is stronger compared to
+Trait A.
