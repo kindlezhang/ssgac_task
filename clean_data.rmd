@@ -286,7 +286,33 @@ ggplot(df, aes(x = Expected, y = Observed, color = Trait)) +
 
 ## interpret the Q-Q plot
 
-The 45-degree line in the QQ plot represents the distribution of p-values we would expect under the global null hypothesis—i.e., if none of the SNPs are associated with the trait.
+The 45-degree line in the QQ plot represents the distribution of 
+p-values we would expect under the global null hypothesis—i.e., 
+if none of the SNPs are associated with the trait.
 
-In this analysis, deviations from the line suggest inflation or enrichment of small p-values. Specifically, the p-values for Trait B show a marked upward deviation from the 45-degree line, indicating strong evidence of association between SNPs and the trait. In contrast, Trait A follows the null line more closely, suggesting fewer or weaker signals of association.
+In this analysis, deviations from the line suggest inflation or 
+enrichment of small p-values. Specifically, the p-values for Trait 
+B show a marked upward deviation from the 45-degree line, indicating 
+strong evidence of association between SNPs and the trait. In contrast, 
+Trait A follows the null line more closely, suggesting fewer or weaker 
+signals of association.
 
+## why it should be monotonic
+
+QQ plots are inherently monotonic because they plot quantiles of two 
+distributions, both of which are sorted in ascending order. As a 
+result, each successive point must have equal or higher x and y 
+values than the previous one, making the plot monotonically increasing 
+regardless of the specific data being compared.
+
+## describe the trend of different traits
+
+In the QQ plot, the data for Trait A closely follows the 45-degree 
+line, indicating that most SNPs do not deviate from the null distribution. 
+This suggests few, if any, SNPs are significantly associated with Trait A.
+
+In contrast, Trait B shows a substantial upward deviation from the 
+45-degree line, especially in the tail, which indicates strong 
+enrichment of small p-values. This suggests that many SNPs are 
+likely associated with Trait B, and the genetic signal is stronger 
+compared to Trait A.
