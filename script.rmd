@@ -1,6 +1,6 @@
 ---
 title: "SSGAC Data Task"
-Author: "Kindle Zhang"
+Author: 
 output: pdf_document
 ---
 
@@ -34,7 +34,7 @@ We can find there are many missing values in the position information, so we nee
 reorder_columns_if_pos <- function(data_frame) {
     data_name <- deparse(substitute(data_frame))
     rows_to_change <- which(data_frame$BPOS %in% c("T", "C", "G", "A"))
-    cat("There are", length(rows_to_change), "rows to change in", data_name, "\n")
+    # cat("There are", length(rows_to_change), "rows to change in", data_name, "\n")
 
     data_frame_new <- data_frame[rows_to_change, ] |>
         dplyr::mutate(
@@ -72,7 +72,7 @@ fix_nchrobs_missing <- function(data_frame) {
     data_name <- deparse(substitute(data_frame))
     # find the rows with missing NCHROBS
     rows_to_change <- which(is.na(data_frame$NCHROBS))
-    cat("There are", length(rows_to_change), "rows with missing NCHROBS in", data_name, "\n")
+    # cat("There are", length(rows_to_change), "rows with missing NCHROBS in", data_name, "\n")
 
     # replace NCHROBS with beta_hat
     data_frame_new <- data_frame[rows_to_change, ] |>
@@ -115,7 +115,7 @@ filter_valid_snps <- function(data) {
                 MAF > 0 & MAF < 0.5 &
                 A1 != A2
         )
-    cat(nrow(data) - nrow(data_filtered), "snps are filtered out due to A1, A2 and MAF in the", data_name, "\n")
+    # cat(nrow(data) - nrow(data_filtered), "snps are filtered out due to A1, A2 and MAF in the", data_name, "\n")
     return(data_filtered)
 }
 ```
@@ -132,6 +132,7 @@ data_B_filtered <- filter_valid_snps(data_B)
 
 Cause we use a two-sided test, so we assume a 95% significance level
 and the z value should be out of -1.96 and 1.96.
+I also set a threshold for the sample size to avoid issues related to small sample sizes.
 
 ```{r}
 filter_significant_snps <- function(data, info_threshold = 0.9, NCHROBS_threshold = 800000, N_threshold = 70000, alpha = 0.05) {
@@ -143,7 +144,7 @@ filter_significant_snps <- function(data, info_threshold = 0.9, NCHROBS_threshol
                 NCHROBS > NCHROBS_threshold &
                 N > N_threshold
         )
-    cat(nrow(data) - nrow(data_filtered), "snps are filtered out due to small sample size or significance in", deparse(substitute(data)), "\n")
+    # cat(nrow(data) - nrow(data_filtered), "snps are filtered out due to small sample size or significance in", deparse(substitute(data)), "\n")
     return(data_filtered)
 }
 ```

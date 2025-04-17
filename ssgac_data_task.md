@@ -151,7 +151,8 @@ snps are filtered out due to A1, A2 and MAF in the data_B.
 ### check the accuracy and significance of z
 
 Cause we use a two-sided test, so we assume a 95% significance level and
-the z value should be out of -1.96 and 1.96.
+the z value should be out of -1.96 and 1.96. 
+I also set a threshold for the sample size to avoid issues related to small sample sizes.
 
 ``` r
 filter_significant_snps <- function(data, info_threshold = 0.9, NCHROBS_threshold = 800000, N_threshold = 70000, alpha = 0.05) {
