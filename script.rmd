@@ -1,6 +1,5 @@
 ---
 title: "SSGAC Data Task"
-Author: 
 output: pdf_document
 ---
 
